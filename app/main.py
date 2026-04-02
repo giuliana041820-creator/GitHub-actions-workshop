@@ -1,21 +1,17 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 from .calculator import sum, resta, multiply
 
 app = FastAPI()
 
-class OperationInput(BaseModel):
-    a: int
-    b: int
-
-@app.post("/suma")
-def suma_endpoint(data: OperationInput):
-    return {"resultado": sum(data.a, data.b)}
+@app.post("/sum")
+def endpoint_sum(a: int, b: int):
+    return {"result": sum(a, b)}
 
 @app.post("/resta")
-def resta_endpoint(data: OperationInput):
-    return {"resultado": resta(data.a, data.b)}
+def endpoint_resta(a: int, b: int):
+    return {"result": resta(a, b)}
 
-@app.post("/multiplicacion")
-def multiplicacion_endpoint(data: OperationInput):
-    return {"resultado": multiply(data.a, data.b)}
+@app.post("/multiply")
+def endpoint_multiply(a: int, b: int):
+    return {"result": multiply(a, b)}
