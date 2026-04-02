@@ -1,16 +1,25 @@
 from fastapi import FastAPI
-from .calculator import sum, resta, multiply
+from pydantic import BaseModel
+from . import calculator
 
 app = FastAPI()
 
-@app.post("/sum")
-def endpoint_sum(a: int, b: int):
-    return {"result": sum(a, b)}
+
+class Operands(BaseModel):
+    a: int
+    b: int
+
+
+@app.post("/suma")
+def endpoint_suma(operands: Operands):
+    return {"resultado": calculator.sum(operands.a, operands.b)}
+
 
 @app.post("/resta")
-def endpoint_resta(a: int, b: int):
-    return {"result": resta(a, b)}
+def endpoint_resta(operands: Operands):
+    return {"resultado": calculator.resta(operands.a, operands.b)}
 
-@app.post("/multiply")
-def endpoint_multiply(a: int, b: int):
-    return {"result": multiply(a, b)}
+
+@app.post("/multiplicacion")
+def endpoint_multiplicacion(operands: Operands):
+    return {"resultado": calculator.multiply(operands.a, operands.b)}
