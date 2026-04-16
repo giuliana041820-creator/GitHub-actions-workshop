@@ -2,8 +2,9 @@ name: CICD
 
 on:
   push:
-    branches:
+   branches:
       - main
+      - dev    # <--- Asegúrate de que diga dev aquí
     tags:
       - "v*"
   pull_request:
