@@ -1,6 +1,6 @@
 name: CICD
 
-# Triggers: Ahora escucha a main y dev
+# Triggers
 on:
   push:
     branches:
@@ -51,10 +51,11 @@ jobs:
       - name: Run tests
         run: pytest
 
+  # FLUJO PARA RAMA MAIN (PROD)
   docker-push:
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -69,9 +70,7 @@ jobs:
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/github-actions-workshop
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=ref,event=branch
-            type=ref,event=tag
+            type=raw,value=latest
             type=sha
       - name: Build & Push Docker image
         uses: docker/build-push-action@v6
@@ -82,20 +81,48 @@ jobs:
           tags: ${{ steps.extract_metadata.outputs.tags }}
           labels: ${{ steps.extract_metadata.outputs.labels }}
 
-  deploy-dev:
+  deploy-prod:
     runs-on: ubuntu-latest
     needs: docker-push
-    # Solo se despliega a dev si estamos en la rama dev
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger render PROD deploy
+        run: curl -X POST "${{ secrets.RENDER_PROD_DEPLOY_HOOK }}"
+
+  # FLUJO PARA RAMA DEV
+  docker-push-dev:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Login in Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Extract Docker metadata
+        id: extract_metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/github-actions-workshop
+          tags: |
+            type=raw,value=dev
+            type=sha
+      - name: Build & Push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.extract_metadata.outputs.tags }}
+          labels: ${{ steps.extract_metadata.outputs.labels }}          
+
+  deploy-dev:
+    runs-on: ubuntu-latest
+    needs: docker-push-dev
     if: github.ref == 'refs/heads/dev'
     steps:
       - name: Trigger render DEV deploy
         run: curl -X POST "${{ secrets.RENDER_DEV_HOOK }}"
-
-  deploy-prod:
-    runs-on: ubuntu-latest
-    needs: docker-push
-    # Solo se despliega a prod si creamos un tag (v1.0, etc)
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Trigger render PROD deploy
-        run: curl -X POST "${{ secrets.RENDER_PROD_DEPLOY_HOOK }}"
